@@ -1,0 +1,125 @@
+services:
+  # ── API Server ──────────────────────────────────────────────────────────────
+  api:
+    build: .
+    image: swapie-backend:latest
+    container_name: swapie-api
+    restart: always
+    env_file: .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - swapie
+
+  # ── Queue Workers ───────────────────────────────────────────────────────────
+  worker-default:
+    image: swapie-backend:latest
+    container_name: swapie-worker-default
+    restart: always
+    env_file: .env
+    command: ["swapie_backend", "--worker", "default"]
+    depends_on:
+      - api
+    networks:
+      - swapie
+
+  worker-emails:
+    image: swapie-backend:latest
+    container_name: swapie-worker-emails
+    restart: always
+    env_file: .env
+    command: ["swapie_backend", "--worker", "emails"]
+    depends_on:
+      - api
+    networks:
+      - swapie
+
+  worker-sms:
+    image: swapie-backend:latest
+    container_name: swapie-worker-sms
+    restart: always
+    env_file: .env
+    command: ["swapie_backend", "--worker", "sms"]
+    depends_on:
+      - api
+    networks:
+      - swapie
+
+  worker-shipments:
+    image: swapie-backend:latest
+    container_name: swapie-worker-shipments
+    restart: always
+    env_file: .env
+    command: ["swapie_backend", "--worker", "shipments"]
+    depends_on:
+      - api
+    networks:
+      - swapie
+
+  worker-notifications:
+    image: swapie-backend:latest
+    container_name: swapie-worker-notifications
+    restart: always
+    env_file: .env
+    command: ["swapie_backend", "--worker", "notifications"]
+    depends_on:
+      - api
+    networks:
+      - swapie
+
+  # ── MySQL ───────────────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: swapie-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-swapie_root}
+      MYSQL_DATABASE: ${DB_DATABASE:-swapie}
+      MYSQL_USER: ${DB_USERNAME:-swapie}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-swapie_pass}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - swapie
+
+  # ── RabbitMQ ────────────────────────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: swapie-rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - swapie
+
+volumes:
+  mysql_data:
+  rabbitmq_data:
+
+networks:
+  swapie:
+    driver: bridge

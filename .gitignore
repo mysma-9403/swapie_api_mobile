@@ -1,0 +1,36 @@
+# Rust build artifacts
+/target
+debug/
+*.pdb
+
+# Cargo lock is typically committed for binaries, but listed here for awareness
+# Cargo.lock
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Database dumps
+*.sql.gz
+*.sql.bak
+
+# Temporary files
+tmp/
+temp/

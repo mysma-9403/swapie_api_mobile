@@ -1,0 +1,81 @@
+[package]
+name = "swapie_backend"
+version = "1.0.0"
+edition = "2021"
+authors = ["Swapie Team"]
+description = "Swapie - Book & Board Game Trading Platform API"
+
+[dependencies]
+# Web framework
+actix-web = "4"
+actix-rt = "2"
+actix-cors = "0.7"
+actix-multipart = "0.7"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "mysql", "chrono", "json", "migrate", "rust_decimal"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Environment & configuration
+dotenvy = "0.15"
+
+# Authentication & security
+jsonwebtoken = "9"
+argon2 = "0.5"
+bcrypt = "0.16"
+base64 = "0.22"
+rand = "0.8"
+sha2 = "0.10"
+hmac = "0.12"
+hex = "0.4"
+
+# Validation
+validator = { version = "0.18", features = ["derive"] }
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging & tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-actix-web = "0.7"
+
+# HTTP client (for external APIs)
+reqwest = { version = "0.12", features = ["json", "multipart"] }
+
+# UUID
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Rate limiting
+governor = "0.7"
+
+# MIME / file handling
+mime = "0.3"
+tempfile = "3"
+
+# Decimal for money
+rust_decimal = { version = "1", features = ["serde-with-str"] }
+
+# Regex
+regex = "1"
+
+# Futures
+futures = "0.3"
+
+# Message Queue (RabbitMQ)
+lapin = "2"
+
+# Thiserror
+thiserror = "2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

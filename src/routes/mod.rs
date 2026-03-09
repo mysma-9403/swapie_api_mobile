@@ -1,0 +1,185 @@
+use actix_web::web;
+use crate::handlers;
+
+pub fn configure_routes(cfg: &mut web::ServiceConfig) {
+    // Public routes (no auth)
+    cfg.service(
+        web::scope("/api")
+            .route("/translations/{lang}", web::get().to(handlers::public::get_translations))
+            .service(
+                web::scope("/v1")
+                    .route("/genres", web::get().to(handlers::public::list_genres))
+                    .route("/tags", web::get().to(handlers::public::list_tags))
+                    .route("/regulations", web::get().to(handlers::public::get_regulations))
+                    .route("/privacy-policy", web::get().to(handlers::public::get_privacy_policy))
+                    .route("/stripe/webhook", web::post().to(handlers::payments::handle_webhook))
+            )
+    );
+
+    // Auth routes
+    cfg.service(
+        web::scope("/api/auth")
+            // Public auth
+            .route("/login", web::post().to(handlers::auth::login))
+            .route("/sms-code", web::post().to(handlers::auth::request_sms_code))
+            .route("/verify_code", web::post().to(handlers::auth::verify_code))
+            .route("/complete-registration", web::post().to(handlers::auth::complete_registration))
+            .route("/login-sms", web::post().to(handlers::auth::login_sms))
+            .route("/verify-login-sms", web::post().to(handlers::auth::verify_login_sms))
+            .route("/social-login", web::post().to(handlers::auth::social_login))
+            .route("/forgot-password", web::post().to(handlers::auth::forgot_password))
+            .route("/reset-password", web::post().to(handlers::auth::reset_password))
+            .route("/genres", web::get().to(handlers::auth::get_auth_genres))
+            .route("/tags", web::get().to(handlers::auth::get_auth_tags))
+            // Protected auth (need middleware wrapper)
+            .route("/user", web::get().to(handlers::auth::get_user))
+            .route("/logout", web::post().to(handlers::auth::logout))
+            .route("/revoke-all", web::post().to(handlers::auth::revoke_all))
+            .route("/add-phone", web::post().to(handlers::auth::add_phone))
+            .route("/verify-social-phone", web::post().to(handlers::auth::verify_social_phone))
+    );
+
+    // Protected API v1 routes
+    cfg.service(
+        web::scope("/api/v1")
+            // Books
+            .route("/books", web::post().to(handlers::books::create_book))
+            .route("/books", web::get().to(handlers::books::list_books))
+            .route("/books/user", web::get().to(handlers::books::get_user_books))
+            .route("/books/similar", web::get().to(handlers::books::get_similar_books))
+            .route("/books/external/{eanOrIsbn}", web::get().to(handlers::books::get_external_book))
+            .route("/books/{id}", web::get().to(handlers::books::get_book))
+            .route("/books/{id}", web::put().to(handlers::books::update_book))
+            .route("/books/{id}/update", web::post().to(handlers::books::update_book_multipart))
+            .route("/books/{id}", web::delete().to(handlers::books::delete_book))
+            .route("/books/{id}/changes", web::get().to(handlers::books::get_book_changes))
+            // Swipe
+            .route("/swipe", web::get().to(handlers::swipe::get_next_swipe))
+            .route("/swipe/{book_id}", web::post().to(handlers::swipe::handle_swipe))
+            .route("/swipe/{book_id}/toggle", web::post().to(handlers::swipe::toggle_swipe))
+            // Offers
+            .route("/offers/my-inventory", web::get().to(handlers::offers::get_inventory))
+            .route("/offers", web::post().to(handlers::offers::create_offer))
+            .route("/offers/{id}", web::get().to(handlers::offers::get_offer))
+            .route("/offers/{id}/accept", web::post().to(handlers::offers::accept_offer))
+            .route("/offers/{id}/finalize", web::post().to(handlers::offers::finalize_offer))
+            .route("/offers/{id}/cost-preview", web::get().to(handlers::offers::cost_preview))
+            .route("/offers/{id}/reject", web::post().to(handlers::offers::reject_offer))
+            .route("/offers/{id}/cancel", web::post().to(handlers::offers::cancel_offer))
+            .route("/offers/{id}/counter", web::post().to(handlers::offers::counter_offer))
+            // Swap Center
+            .route("/swap-center", web::get().to(handlers::swap_center::get_swap_center))
+            .route("/swap-center/swaps", web::get().to(handlers::swap_center::get_swaps))
+            .route("/swap-center/you-like", web::get().to(handlers::swap_center::get_you_like))
+            .route("/swap-center/others-like", web::get().to(handlers::swap_center::get_others_like))
+            .route("/swap-center/swap-details/{userId}", web::get().to(handlers::swap_center::get_swap_details))
+            .route("/swap-center/activity", web::get().to(handlers::swap_center::get_activity))
+            // Matches
+            .route("/matches", web::get().to(handlers::swap_center::get_matches))
+            .route("/matches/{user_id}", web::get().to(handlers::swap_center::get_match_details))
+            // Chat
+            .route("/chat/start", web::post().to(handlers::chat::start_chat))
+            .route("/trades/{id}/messages", web::get().to(handlers::chat::get_messages))
+            .route("/trades/{id}/messages", web::post().to(handlers::chat::send_message))
+            .route("/trades/{id}/messages/read", web::post().to(handlers::chat::mark_read))
+            .route("/inbox", web::get().to(handlers::chat::get_inbox))
+            .route("/inbox/unread-count", web::get().to(handlers::chat::get_unread_count))
+            // Delivery & Config
+            .route("/config/delivery-options", web::get().to(handlers::delivery::get_delivery_options))
+            .route("/config/fees", web::get().to(handlers::delivery::get_fees))
+            .route("/trades/{id}/delivery-status", web::get().to(handlers::delivery::get_delivery_status))
+            .route("/trades/{id}/confirm-delivery", web::post().to(handlers::delivery::confirm_delivery))
+            .route("/trades/{id}/dispute", web::post().to(handlers::delivery::open_dispute))
+            // InPost Lockers
+            .route("/inpost/lockers/search", web::get().to(handlers::delivery::search_inpost))
+            .route("/inpost/lockers/validate", web::post().to(handlers::delivery::validate_inpost))
+            .route("/inpost/lockers/nearest", web::get().to(handlers::delivery::nearest_inpost))
+            .route("/inpost/lockers/{lockerName}", web::get().to(handlers::delivery::get_inpost_locker))
+            // Orlen Lockers
+            .route("/orlen/lockers/search", web::get().to(handlers::delivery::search_orlen))
+            .route("/orlen/lockers/nearest", web::get().to(handlers::delivery::nearest_orlen))
+            .route("/orlen/lockers/{lockerName}", web::get().to(handlers::delivery::get_orlen_locker))
+            // Profile
+            .route("/profile", web::get().to(handlers::profile::get_profile))
+            .route("/profile/details", web::get().to(handlers::profile::get_profile_details))
+            .route("/profile/user/{userId}", web::get().to(handlers::profile::get_user_profile))
+            .route("/profile/update", web::put().to(handlers::profile::update_profile))
+            .route("/profile/address", web::put().to(handlers::profile::update_address))
+            .route("/profile/phone", web::put().to(handlers::profile::update_phone))
+            .route("/profile/locker", web::put().to(handlers::profile::update_locker))
+            .route("/profile/export-data", web::get().to(handlers::profile::export_data))
+            .route("/profile/account", web::delete().to(handlers::profile::delete_account))
+            .route("/profile/gdpr-consent", web::get().to(handlers::profile::get_gdpr_consent))
+            .route("/profile/gdpr-consent", web::put().to(handlers::profile::update_gdpr_consent))
+            // Reviews
+            .route("/trades/{tradeId}/review", web::post().to(handlers::reviews::create_review))
+            .route("/trades/{tradeId}/review-status", web::get().to(handlers::reviews::get_review_status))
+            .route("/users/{userId}/reviews", web::get().to(handlers::reviews::get_user_reviews))
+            // Payments
+            .route("/wallet/balance", web::get().to(handlers::payments::get_balance))
+            .route("/wallet/withdraw", web::post().to(handlers::payments::withdraw))
+            .route("/stripe/config", web::get().to(handlers::payments::get_stripe_config))
+            .route("/stripe/customer", web::post().to(handlers::payments::ensure_customer))
+            .route("/stripe/readiness", web::get().to(handlers::payments::get_readiness))
+            .route("/stripe/setup-intent", web::post().to(handlers::payments::create_setup_intent))
+            .route("/stripe/payment-methods", web::get().to(handlers::payments::list_payment_methods))
+            .route("/stripe/payment-methods/{id}", web::delete().to(handlers::payments::delete_payment_method))
+            .route("/stripe/payment-methods/{id}/default", web::put().to(handlers::payments::set_default_payment_method))
+            .route("/stripe/topup", web::post().to(handlers::payments::create_topup))
+            .route("/stripe/payment/{paymentIntentId}/status", web::get().to(handlers::payments::get_payment_status))
+            // Stripe Connect
+            .route("/stripe/connect/account", web::post().to(handlers::stripe_connect::create_account))
+            .route("/stripe/connect/account", web::put().to(handlers::stripe_connect::update_account))
+            .route("/stripe/connect/documents", web::post().to(handlers::stripe_connect::submit_documents))
+            .route("/stripe/connect/status", web::get().to(handlers::stripe_connect::get_status))
+            .route("/stripe/connect/accept-tos", web::post().to(handlers::stripe_connect::accept_tos))
+            .route("/stripe/connect/bank-account", web::post().to(handlers::stripe_connect::add_bank_account))
+            .route("/stripe/connect/bank-accounts", web::get().to(handlers::stripe_connect::list_bank_accounts))
+            .route("/stripe/connect/bank-accounts/{bankAccountId}", web::delete().to(handlers::stripe_connect::remove_bank_account))
+            // Notifications
+            .route("/notifications", web::get().to(handlers::notifications::list_notifications))
+            .route("/notifications/unread-count", web::get().to(handlers::notifications::unread_count))
+            .route("/notifications/read-all", web::post().to(handlers::notifications::mark_all_read))
+            .route("/notifications/{id}", web::get().to(handlers::notifications::get_notification))
+            .route("/notifications/{id}/read", web::post().to(handlers::notifications::mark_read))
+            // Device Tokens
+            .route("/device/token", web::post().to(handlers::notifications::register_device))
+            .route("/device/token", web::delete().to(handlers::notifications::unregister_device))
+            // User blocking
+            .route("/users/block", web::post().to(handlers::users::block_user))
+            .route("/users/unblock", web::post().to(handlers::users::unblock_user))
+            .route("/users/blocked", web::get().to(handlers::users::get_blocked_users))
+            // Admin
+            .route("/users", web::get().to(handlers::admin::list_users))
+            .route("/users/bulk-delete", web::post().to(handlers::admin::bulk_delete_users))
+            .route("/roles", web::get().to(handlers::admin::list_roles))
+            .route("/roles/delete/bulk-delete", web::post().to(handlers::admin::bulk_delete_roles))
+            .route("/permissions", web::get().to(handlers::admin::list_permissions))
+            .route("/permissions/groups", web::get().to(handlers::admin::get_permission_groups))
+            .route("/permissions/{id}", web::get().to(handlers::admin::get_permission))
+            .route("/action-logs", web::get().to(handlers::admin::list_action_logs))
+            .route("/action-logs/{id}", web::get().to(handlers::admin::get_action_log))
+            .route("/settings", web::get().to(handlers::admin::get_settings))
+            .route("/settings", web::put().to(handlers::admin::update_settings))
+            .route("/settings/{key}", web::get().to(handlers::admin::get_setting))
+            .route("/modules", web::get().to(handlers::admin::list_modules))
+            .route("/modules/{name}", web::get().to(handlers::admin::get_module))
+            .route("/modules/{name}/toggle-status", web::patch().to(handlers::admin::toggle_module))
+            .route("/modules/{name}", web::delete().to(handlers::admin::delete_module))
+            // Posts
+            .route("/posts/{postType}/bulk-delete", web::post().to(handlers::posts::bulk_delete_posts))
+            .route("/posts/{postType}/{id}", web::get().to(handlers::posts::get_post))
+            .route("/posts/{postType}/{id}", web::put().to(handlers::posts::update_post))
+            .route("/posts/{postType}/{id}", web::delete().to(handlers::posts::delete_post))
+            .route("/posts/{postType}", web::post().to(handlers::posts::create_post))
+            .route("/posts/{postType}", web::get().to(handlers::posts::list_posts))
+            .route("/posts", web::get().to(handlers::posts::list_posts_default))
+            // Terms
+            .route("/terms/{taxonomy}/bulk-delete", web::post().to(handlers::terms::bulk_delete_terms))
+            .route("/terms/{taxonomy}/{id}", web::get().to(handlers::terms::get_term))
+            .route("/terms/{taxonomy}/{id}", web::put().to(handlers::terms::update_term))
+            .route("/terms/{taxonomy}/{id}", web::delete().to(handlers::terms::delete_term))
+            .route("/terms/{taxonomy}", web::get().to(handlers::terms::list_terms))
+            .route("/terms/{taxonomy}", web::post().to(handlers::terms::create_term))
+    );
+}
